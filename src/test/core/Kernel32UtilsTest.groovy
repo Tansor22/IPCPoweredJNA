@@ -26,7 +26,12 @@ class Kernel32UtilsTest extends Specification {
         Pointer fileMappingPtr = Kernel32Utils.createOrOpenFileMapping(primitiveName)
         fileMappingPtr == null
         Kernel32Utils.hasError()
+    }
 
-
+    def "Copy Memory doesn't throw exceptions"() {
+        expect:
+        char[] dst = "Destination".toCharArray()
+        char[] src = "Source".toCharArray()
+        Kernel32Utils.copyMemory(dst, src, dst.length, src.length)
     }
 }

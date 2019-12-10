@@ -29,4 +29,8 @@ public class Kernel32Utils {
     public static boolean hasError() {
         return KERNEL32.GetLastError() != 0;
     }
+
+    public static void copyMemory(char[] buf, char[] src, int srcSize, int bufSize) {
+        KERNEL32.CopyMemory(buf, src, Math.min(srcSize, bufSize));
+    }
 }

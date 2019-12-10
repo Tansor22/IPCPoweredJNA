@@ -32,6 +32,7 @@ public interface Kernel32 extends Library /*StdCallLibrary ??? */ {
     Pointer MapViewOfFile(Pointer hFileMappingObject, int dwDesiredAccess, int dwFileOffsetHigh, int dwFileOffsetLow, int dwNumberOfBytesToMap);
 
     int WaitForSingleObject(Pointer hHandle, int dwMilliseconds);
+    void CopyMemory(char[] Destination, char[] Source, int Length);
 
     int GetLastError();
 }
