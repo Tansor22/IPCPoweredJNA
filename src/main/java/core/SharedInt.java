@@ -2,6 +2,7 @@ package core;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileLock;
 
 public class SharedInt extends SharedData<Integer> {
 
@@ -14,9 +15,15 @@ public class SharedInt extends SharedData<Integer> {
         byte[] bytesToWrite = data.toString().getBytes();
         ByteBuffer buffer = ByteBuffer.wrap(bytesToWrite);
         try {
+            FileLock lock = channel.tryLock();
+            if (lock.isShared()) {
+                System.out.println("Lock shared.");
+            }
             // clears file
             channel.truncate(0);
             channel.write(buffer);
+            lock.release();
+            lock.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -37,12 +44,19 @@ public class SharedInt extends SharedData<Integer> {
         return Integer.parseInt(sb.toString());
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Integer get() {
         ByteBuffer buffer = ByteBuffer.allocate(dataType.getSize() + 1);
         try {
+            FileLock lock = channel.tryLock();
+            if (lock.isShared()) {
+                System.out.println("Lock shared.");
+            }
             channel.position(0);
             int bytesRead = channel.read(buffer);
+            lock.release();
+            lock.close();
             if (bytesRead != -1)
                 return fromAscii(buffer.array(), bytesRead);
         } catch (IOException e) {
