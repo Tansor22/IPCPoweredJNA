@@ -1,6 +1,4 @@
-package runners;
-
-import core.Relay;
+package demos;
 
 import java.io.File;
 import java.io.IOException;

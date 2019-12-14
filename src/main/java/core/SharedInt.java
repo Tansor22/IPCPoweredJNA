@@ -15,10 +15,7 @@ public class SharedInt extends SharedData<Integer> {
         byte[] bytesToWrite = data.toString().getBytes();
         ByteBuffer buffer = ByteBuffer.wrap(bytesToWrite);
         try {
-            FileLock lock = channel.tryLock();
-            if (lock.isShared()) {
-                System.out.println("Lock shared.");
-            }
+            FileLock lock = channel.lock();
             // clears file
             channel.truncate(0);
             channel.write(buffer);
@@ -28,7 +25,6 @@ public class SharedInt extends SharedData<Integer> {
             e.printStackTrace();
         }
     }
-
 
 
     private int fromAscii(byte[] bytes, int length) {
@@ -49,10 +45,7 @@ public class SharedInt extends SharedData<Integer> {
     public Integer get() {
         ByteBuffer buffer = ByteBuffer.allocate(dataType.getSize() + 1);
         try {
-            FileLock lock = channel.tryLock();
-            if (lock.isShared()) {
-                System.out.println("Lock shared.");
-            }
+            FileLock lock = channel.lock();
             channel.position(0);
             int bytesRead = channel.read(buffer);
             lock.release();
@@ -62,6 +55,6 @@ public class SharedInt extends SharedData<Integer> {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return null;
+        return 0;
     }
 }

@@ -21,6 +21,9 @@ public abstract class SharedData<T> {
         TEMP_DIR = System.getProperty("java.io.tmpdir");
         CONSUMERS = new HashMap<>();
     }
+    public String getDataId() {
+        return dataId;
+    }
 
     public SharedData(String dataId, Data dataType) {
         this.dataType = dataType;
@@ -40,9 +43,9 @@ public abstract class SharedData<T> {
         file = path.toFile();
         try {
             if (!file.exists()) {
-                if (!file.createNewFile()) throw new IOException("Не удалось создать файл!");
+                //if (!file.createNewFile()) throw new IOException("Не удалось создать файл!");
             }
-            channel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
+            channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
             //f.deleteOnExit();
         } catch (IOException e) {
             e.printStackTrace();
@@ -53,9 +56,9 @@ public abstract class SharedData<T> {
         try {
             channel.close();
             Integer consumers = CONSUMERS.get(dataId);
-            System.out.println("Consumer before dec " + consumers);
+            //System.out.println("Consumer before dec " + consumers);
             if (file.exists() && consumers <= 1) {
-                if (!file.delete()) throw new IOException("Не удалось удалить файл!");
+                //if (!file.delete()) throw new IOException("Не удалось удалить файл!");
             }
             CONSUMERS.replace(dataId, --consumers);
         } catch (IOException e) {

@@ -1,4 +1,4 @@
-package runners;
+package demos;
 
 import com.sun.jna.Library;
 import com.sun.jna.Native;

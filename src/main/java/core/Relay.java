@@ -13,8 +13,20 @@ public class Relay {
     private WinNT.HANDLE read;
     // *w
     private WinNT.HANDLE write;
-    public int test;
-    private int numR, numW, waitR, waitW;
+    // shared data
+    private SharedInt numR, numW, waitR, waitW;
+
+    {
+        // windows mutexes
+        empty = Kernel32.INSTANCE.CreateMutex(null, false, "empty");
+        read = Kernel32.INSTANCE.CreateMutex(null, false, "read");
+        write = Kernel32.INSTANCE.CreateMutex(null, false, "write");
+        // shared data
+        numR = new SharedInt("numR");
+        numW = new SharedInt("numW");
+        waitR = new SharedInt("waitR");
+        waitW = new SharedInt("waitW");
+    }
 
     private void capture(WinNT.HANDLE mutex) {
         Kernel32.INSTANCE.WaitForSingleObject(mutex, WinBase.INFINITE);
@@ -25,77 +37,120 @@ public class Relay {
     }
 
     public class RelayWriter extends Thread {
-        public RelayWriter(Runnable r) {
+        private int iterations;
+        public RelayWriter(Runnable r, int iterations) {
             super(r);
+            this.iterations = iterations;
         }
 
-        public int getTest() {return test;}
         public void write() {
-            while (true) {
+            int i =0;
+            while (i++ < iterations) {
                 // e.P()
                 capture(empty);
-                if (numW > 0 || numR > 0) {
+                if (numW.get() > 0 || numR.get() > 0) {
                     // there is writers OR readers
-                    waitW++;
+                    incSharedInt(waitW);
 
                     //waiting for writing
                     release(empty);
                     capture(write);
                 }
-                numW++;
+                incSharedInt(numW);
                 relaySynchronize();
                 // do the job
                 run();
                 // what is it
                 capture(empty);
-                numW--;
+                decSharedInt(numW);
                 relaySynchronize();
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
     }
-    public class RelayReader extends Thread {
 
+    public class RelayReader extends Thread {
+        private int iterations;
+        public RelayReader(Runnable r, int iterations) {
+            super(r);
+            this.iterations = iterations;
+        }
         public void read() {
-            while (true) {
+            int i =0;
+            while (i++ < iterations) {
                 // e.P()
                 capture(empty);
-                if (numW > 0) {
+                if (numW.get() > 0) {
                     // there is writers
-                    waitR++;
+                    incSharedInt(waitR);
 
                     //waiting for writing
                     release(empty);
                     capture(read);
                 }
-                numR++;
+                incSharedInt(numR);
                 relaySynchronize();
                 // do the job
                 run();
                 // what is it
                 capture(empty);
-                numR--;
+                decSharedInt(numR);
                 relaySynchronize();
+                try {
+                    Thread.sleep(600);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
     }
 
+    private void incSharedInt(SharedInt shared) {
+        Integer value = shared.get();
+        System.out.println(shared.getDataId() + " : " + value + " got");
+        shared.set(++value);
+        System.out.println("Increment it..");
+    }
+
+    private void decSharedInt(SharedInt shared) {
+        Integer value = shared.get();
+        System.out.println(shared.getDataId() + " : " + value + " got");
+        shared.set(--value);
+        System.out.println("Decrement it..");
+    }
+
     public void relaySynchronize() {
         // there is writers or/and readers, and writers waiting
-        if ((numW > 0 || numR > 0) && waitW > 0) {
+        if ((numW.get() > 0 || numR.get() > 0) && waitW.get() > 0) {
             // e.V() =>
             release(empty);
-        } else if ((numW == 0 && numR == 0) && waitW > 0) {
+        } else if ((numW.get() == 0 && numR.get() == 0) && waitW.get() > 0) {
             // there is NO writers and readers, and writers waiting
-            waitW--;
+            decSharedInt(waitW);
             // allow to write
             release(write);
-        } else if (numW == 0 && waitW == 0 && waitR > 0) {
+        } else if (numW.get() == 0 && waitW.get() == 0 && waitR.get() > 0) {
             // there is NO writers and writers waiting and readers waiting absent
-            waitR--;
+            decSharedInt(waitR);
             // allow to read
             release(read);
         } else release(empty);
+    }
+    public void close() {
+        // ???
+        Kernel32.INSTANCE.ReleaseMutex(empty);
+        Kernel32.INSTANCE.ReleaseMutex(write);
+        Kernel32.INSTANCE.ReleaseMutex(read);
+        // closing data
+        waitR.close();
+        waitW.close();
+        numR.close();
+        numW.close();
     }
 }
