@@ -10,9 +10,7 @@ import java.nio.file.StandardOpenOption;
 
 import static utils.Utils.getRandomInt;
 
-public class Writer1 {
-
-
+public class Writer3 {
     public static void main(String[] args) throws IOException {
         // initialize
         Relay relay = new Relay();
@@ -25,7 +23,7 @@ public class Writer1 {
         FileChannel f = FileChannel.open(Paths.get("file.txt"), StandardOpenOption.WRITE);
 
         // writer1
-        Thread.currentThread().setName("Writer 1");
+        Thread.currentThread().setName("Writer 3");
         Relay.RelayWriter writer = relay.new RelayWriter(() -> {
             try {
                 int position = getRandomInt((int)f.size());
@@ -39,7 +37,7 @@ public class Writer1 {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }, Integer.parseInt(args[0]));
+        }, 10);
         writer.write();
     }
-}
+    }

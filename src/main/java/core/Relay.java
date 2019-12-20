@@ -4,6 +4,9 @@ import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.WinBase;
 import com.sun.jna.platform.win32.WinNT;
 
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 
 public class Relay {
     // use win API mutex for inter-processes synchronization
@@ -15,6 +18,7 @@ public class Relay {
     private WinNT.HANDLE write;
     // shared data
     private SharedInt numR, numW, waitR, waitW;
+    private ReadWriteLock lock = new ReentrantReadWriteLock();
 
     {
         // windows mutexes
@@ -38,13 +42,14 @@ public class Relay {
 
     public class RelayWriter extends Thread {
         private int iterations;
+
         public RelayWriter(Runnable r, int iterations) {
             super(r);
             this.iterations = iterations;
         }
 
         public void write() {
-            int i =0;
+            int i = 0;
             while (i++ < iterations) {
                 // e.P()
                 capture(empty);
@@ -57,13 +62,13 @@ public class Relay {
                     capture(write);
                 }
                 incSharedInt(numW);
-                relaySynchronize();
+                synchronize(-1, false);
                 // do the job
                 run();
                 // what is it
                 capture(empty);
                 decSharedInt(numW);
-                relaySynchronize();
+                synchronize(-1, true);
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -74,14 +79,38 @@ public class Relay {
 
     }
 
+    private void synchronize(int mode, boolean unlock) {
+        if (lock == null) {
+            relaySynchronize();
+        } else {
+            if (mode > 0) {
+                // reader
+                if (unlock) {
+                    lock.readLock().unlock();
+                } else {
+                    lock.readLock().lock();
+                }
+            } else {
+                // writer
+                if (unlock) {
+                    lock.writeLock().unlock();
+                } else {
+                    lock.writeLock().lock();
+                }
+            }
+        }
+    }
+
     public class RelayReader extends Thread {
         private int iterations;
+
         public RelayReader(Runnable r, int iterations) {
             super(r);
             this.iterations = iterations;
         }
+
         public void read() {
-            int i =0;
+            int i = 0;
             while (i++ < iterations) {
                 // e.P()
                 capture(empty);
@@ -94,13 +123,13 @@ public class Relay {
                     capture(read);
                 }
                 incSharedInt(numR);
-                relaySynchronize();
+                synchronize(1, false);
                 // do the job
                 run();
                 // what is it
                 capture(empty);
                 decSharedInt(numR);
-                relaySynchronize();
+                synchronize(1, true);
                 try {
                     Thread.sleep(600);
                 } catch (InterruptedException e) {
@@ -142,6 +171,7 @@ public class Relay {
             release(read);
         } else release(empty);
     }
+
     public void close() {
         // ???
         Kernel32.INSTANCE.ReleaseMutex(empty);
